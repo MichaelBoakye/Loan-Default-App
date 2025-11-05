@@ -32,6 +32,8 @@ This Streamlit-powered web application helps financial institutions, data enthus
 - View probability of default with color-coded results
 
 ---
+## 🌐 Live Demo
+👉 **Try it here:** [https://loan-default-app-mi112.streamlit.app/](https://loan-default-app-mi112.streamlit.app/)
 
 ## 🧰 Tech Stack
 
