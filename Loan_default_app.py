@@ -32,7 +32,6 @@ from sklearn.base import clone
 import plotly.figure_factory as ff
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, roc_auc_score, roc_curve
 
-loan= pd.read_csv('Loan_Default.csv')
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Loan Default App", layout="wide")
