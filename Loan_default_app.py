@@ -131,6 +131,7 @@ if menu == "Home":
     <li>⚙️ <b>Model Training & Comparison</b> – Train models such as Logistic Regression, Decision Tree, and Random Forest, and compare their performance.</li>
     <li>📊 <b>Performance Evaluation</b> – Analyze confusion matrices, ROC curves, and model accuracy with clear visualizations.</li>
     <li>🔮 <b>Risk Prediction</b> – Input borrower details and instantly obtain a data-driven default risk prediction.</li>
+    <li>🔮 <b>Download data from</b> – https://www.kaggle.com/datasets/yasserh/loan-default-dataset.</li>
     </ul>
 
     <p style="margin-top: 20px;">Designed to help <b>credit officers</b>, <b>data analysts</b>, and <b>financial managers</b> make informed, data-backed lending decisions that enhance portfolio performance.</p>
