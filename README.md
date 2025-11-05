@@ -1,4 +1,6 @@
 # 🏦 Loan Default Prediction App
+📊 Loan Default Prediction App | 🎯 [Live Demo](https://loan-default-app-mi112.streamlit.app/)
+
 
 [![Streamlit](https://img.shields.io/badge/Built%20with-Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io)
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
