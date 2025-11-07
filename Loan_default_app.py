@@ -429,82 +429,149 @@ elif page == "Model Evaluation":
                 bio = model_to_bytes(meta['model'])
                 st.download_button("Click to download", data=bio, file_name=f"{best_run['Model']}_{best_id}.pkl", mime="application/octet-stream")
 
-# ---------------------------
-# Prediction
-# ---------------------------
-elif page == "Prediction":
-    st.header("Prediction (uses best model)")
-    if 'model_runs' not in st.session_state or len(st.session_state['model_runs']) == 0:
-        st.warning("Train models first (Modeling).")
-    else:
-        results_df = pd.DataFrame(st.session_state['model_runs'])
-        best_idx = results_df['ROC AUC'].idxmax()
-        best_row = results_df.loc[best_idx]
-        best_id = best_row['id']
-        meta = st.session_state['models'].get(best_id)
-        if not meta:
-            st.error("Best model artifact missing; retrain.")
-        else:
-            st.info(f"Using best model: {best_row['Model']} (id={best_id}) — ROC AUC {best_row['ROC AUC']:.3f}")
-            best_model = meta['model']
-            scaler = meta['scaler']
-            train_cols = meta['X_train_columns']
+# ---------------------- PAGE 5: PREDICTION ----------------------
+elif page == "🔮 Prediction":
 
-            mode = st.radio("Input method", ["Upload CSV", "Manual Input"])
-            if mode == "Upload CSV":
-                up = st.file_uploader("Upload CSV for predictions", type=["csv"])
-                if up:
-                    df_in = pd.read_csv(up)
+    st.title("🔮 Loan Default Prediction")
+    st.markdown(
+        """
+        Upload your dataset or manually input customer details to predict **loan default risk**.
+        The model uses only the selected training features and automatically aligns your data before prediction.
+        """
+    )
+
+    prediction_mode = st.radio(
+        "Choose input method:",
+        ["📁 Upload CSV file", "🧍 Manual Input"],
+        horizontal=True,
+    )
+
+    # --- Load saved training columns and scaler ---
+    if "train_cols" not in st.session_state or "scaler" not in st.session_state:
+        st.warning("⚠️ Please complete the Data Processing and Modeling steps first before making predictions.")
+    else:
+        train_cols = st.session_state["train_cols"]
+        scaler = st.session_state["scaler"]
+        best_model = st.session_state["best_model"]
+
+        # --- 📁 CSV UPLOAD MODE ---
+        if prediction_mode == "📁 Upload CSV file":
+            uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
+
+            if uploaded_file:
+                try:
+                    df_in = pd.read_csv(uploaded_file)
+                    st.subheader("📊 Uploaded Data Preview")
                     st.dataframe(df_in.head())
+
+                    # --- Encoding & alignment with training columns ---
                     df_enc = pd.get_dummies(df_in)
                     df_enc = df_enc.reindex(columns=train_cols, fill_value=0)
-                    # scale numeric cols present in train_cols
-                    numeric_cols = [c for c in train_cols if df_enc[c].dtype in [np.float64, np.int64, np.float32, np.int32]]
+
+                    # --- Safe numeric scaling ---
+                    numeric_cols = [
+                        c for c in train_cols
+                        if c in df_enc.columns and df_enc[c].dtype in [np.float64, np.int64, np.float32, np.int32]
+                    ]
                     try:
                         if numeric_cols:
                             df_enc[numeric_cols] = scaler.transform(df_enc[numeric_cols])
                     except Exception as e:
-                        st.error(f"Scaling error: {e}")
-                    preds = best_model.predict(df_enc)
-                    probs = best_model.predict_proba(df_enc)[:,1] if hasattr(best_model, "predict_proba") else np.zeros(len(preds))
-                    out = pd.DataFrame({"Predicted": preds, "Probability": probs})
-                    st.dataframe(out.style.background_gradient(cmap="YlOrRd", subset=["Probability"]))
-            else:
-                original = st.session_state.get('original_df')
-                if original is None:
-                    st.warning("Original data not found. Re-upload dataset or run Modeling again.")
-                else:
-                    user_vals = {}
-                    for col in original.columns:
-                        if original[col].dtype in [np.int64, np.float64, np.int32, np.float32]:
-                            user_vals[col] = st.number_input(col, value=float(original[col].median()))
-                        else:
-                            choices = original[col].dropna().unique().tolist()
-                            if choices:
-                                user_vals[col] = st.selectbox(col, options=choices)
-                            else:
-                                user_vals[col] = st.text_input(col, value="")
-                    if st.button("Predict"):
-                        user_df = pd.DataFrame([user_vals])
-                        user_enc = pd.get_dummies(user_df)
-                        user_enc = user_enc.reindex(columns=train_cols, fill_value=0)
-                        numeric_cols = [c for c in train_cols if user_enc[c].dtype in [np.float64, np.int64, np.float32, np.int32]]
-                        try:
-                            if numeric_cols:
-                                user_enc[numeric_cols] = scaler.transform(user_enc[numeric_cols])
-                        except Exception as e:
-                            st.error(f"Scaling error: {e}")
-                        pred = best_model.predict(user_enc)[0]
-                        prob = best_model.predict_proba(user_enc)[0,1] if hasattr(best_model, "predict_proba") else 0.0
-                        color = "#28a745" if pred == 0 else "#dc3545"
-                        label = "NO DEFAULT (Low Risk)" if pred == 0 else "DEFAULT (High Risk)"
-                        st.markdown(f"""
-                        <div style='padding:18px;border-radius:8px;background-color:{color};color:white;text-align:center;'>
-                            <h3 style='margin:5px'>{label}</h3>
-                            <p>Predicted probability of default: <b>{prob:.2f}</b></p>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        st.error(f"Scaling failed: {e}")
 
-# ---------------------------
-# End
-# ---------------------------
+                    # --- Make predictions ---
+                    preds = best_model.predict(df_enc)
+                    probs = (
+                        best_model.predict_proba(df_enc)[:, 1]
+                        if hasattr(best_model, "predict_proba")
+                        else None
+                    )
+
+                    # --- Show predictions ---
+                    df_in["Predicted_Default"] = preds
+                    if probs is not None:
+                        df_in["Default_Probability"] = probs
+
+                    st.success("✅ Predictions successfully generated!")
+                    st.dataframe(df_in.head(10))
+
+                    # --- Download predictions ---
+                    csv = df_in.to_csv(index=False).encode("utf-8")
+                    st.download_button(
+                        "⬇️ Download Predictions",
+                        csv,
+                        "loan_default_predictions.csv",
+                        "text/csv",
+                        use_container_width=True,
+                    )
+
+                except Exception as e:
+                    st.error(f"❌ Error processing file: {e}")
+
+        # --- 🧍 MANUAL INPUT MODE ---
+        else:
+            st.subheader("🧾 Enter Details Manually")
+
+            # Example input fields
+            gender = st.selectbox("Gender", ["Male", "Female"])
+            age = st.number_input("Age", 18, 100, 30)
+            income = st.number_input("Annual Income ($)", 1000, 500000, 50000)
+            loan_amount = st.number_input("Loan Amount ($)", 1000, 500000, 15000)
+            credit_worthiness = st.selectbox("Credit Worthiness", ["l1", "l2"])
+            region = st.selectbox("Region", ["central", "north-east", "north-west", "south-east", "south-west"])
+            employment_type = st.selectbox("Employment Type", ["Government", "Private", "Self-employed"])
+            experience = st.number_input("Years of Experience", 0, 50, 5)
+
+            if st.button("🔍 Predict Default Risk"):
+                user_df = pd.DataFrame(
+                    [
+                        {
+                            "Gender": gender,
+                            "Age": age,
+                            "Income": income,
+                            "LoanAmount": loan_amount,
+                            "Credit_Worthiness": credit_worthiness,
+                            "Region": region,
+                            "Employment_Type": employment_type,
+                            "Experience": experience,
+                        }
+                    ]
+                )
+
+                # --- Align & encode manually entered data ---
+                user_enc = pd.get_dummies(user_df)
+                user_enc = user_enc.reindex(columns=train_cols, fill_value=0)
+
+                # --- Safe numeric scaling ---
+                numeric_cols = [
+                    c for c in train_cols
+                    if c in user_enc.columns and user_enc[c].dtype in [np.float64, np.int64, np.float32, np.int32]
+                ]
+                try:
+                    if numeric_cols:
+                        user_enc[numeric_cols] = scaler.transform(user_enc[numeric_cols])
+                except Exception as e:
+                    st.error(f"Scaling failed: {e}")
+
+                # --- Predict using best model ---
+                try:
+                    prediction = best_model.predict(user_enc)[0]
+                    probability = (
+                        best_model.predict_proba(user_enc)[0, 1]
+                        if hasattr(best_model, "predict_proba")
+                        else None
+                    )
+
+                    st.subheader("📈 Prediction Result")
+                    if prediction == 1:
+                        st.error("⚠️ This applicant is **likely to default**.")
+                    else:
+                        st.success("✅ This applicant is **unlikely to default**.")
+
+                    if probability is not None:
+                        st.info(f"**Default Probability:** {probability:.2%}")
+
+                    st.dataframe(user_df)
+
+                except Exception as e:
+                    st.error(f"❌ Prediction failed: {e}")
