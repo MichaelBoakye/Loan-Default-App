@@ -430,7 +430,7 @@ elif page == "Model Evaluation":
                 st.download_button("Click to download", data=bio, file_name=f"{best_run['Model']}_{best_id}.pkl", mime="application/octet-stream")
 
 # ---------------------- PAGE 5: PREDICTION ----------------------
-elif page == "🔮 Prediction":
+elif page == "Prediction":
 
     st.title("🔮 Loan Default Prediction")
     st.markdown(
